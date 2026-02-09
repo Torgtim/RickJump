@@ -3,32 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rick Jump - Ultimate</title>
+    <title>Rick Jump - Upgrade Edition</title>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', Courier, monospace; }
-        canvas { display: block; background: linear-gradient(#1a0033, #000022); }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', sans-serif; }
+        canvas { display: block; background: linear-gradient(#001, #002, #005); }
         
-        #ui { position: absolute; top: 10px; width: 100%; text-align: center; color: #0ff; font-size: 30px; font-weight: bold; text-shadow: 0 0 10px #0ff; pointer-events: none; }
-        
-        #deathScreen { 
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: #000; z-index: 100; flex-direction: column; align-items: center; justify-content: center; 
+        #ui { 
+            position: absolute; top: 10px; width: 100%; text-align: center; 
+            color: white; font-size: 28px; font-weight: bold; pointer-events: none; z-index: 10;
         }
-        #deathScreen h1 { color: #ff0044; font-size: 40px; text-shadow: 0 0 20px #f00; margin-bottom: 10px; text-align: center; }
-        video { width: 90%; max-width: 500px; border: 4px solid #fff; box-shadow: 0 0 30px #f0f; }
-        button { margin-top: 20px; padding: 15px 40px; font-size: 20px; background: #0ff; border: none; cursor: pointer; border-radius: 50px; font-weight: bold; }
+
+        /* DIN RICKROLL KODE HER */
+        #rickRollOverlay {
+            display: none; 
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: black;
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #rickVideo {
+            width: 100%;
+            max-height: 80vh;
+        }
+
+        #rickRollOverlay button {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 20px;
+            cursor: pointer;
+            background: #fff;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
 
     <div id="ui">SCORE: 0</div>
-    
-    <div id="deathScreen">
-        <h1 id="deathText">YOU GOT ROLLED!</h1>
+
+    <div id="rickRollOverlay">
         <video id="rickVideo" playsinline loop>
             <source src="https://dn721809.ca.archive.org/0/items/youtube-xvFZjo5PgG0/xvFZjo5PgG0.mp4" type="video/mp4">
         </video>
-        <button onclick="location.reload()">TRY AGAIN</button>
+        <button onclick="location.reload()">PRØV IGJEN</button>
     </div>
 
     <canvas id="game"></canvas>
@@ -43,67 +66,83 @@
 
     let score = 0;
     let gameActive = true;
-    const gravity = 0.35;
-    const jumpStrength = -13;
+    const gravity = 0.4;
+    const jumpStrength = -14;
     
-    const rickImg = new Image();
-    rickImg.src = 'https://www.vhv.rs/dpng/d/536-5369614_rick-astley-png-transparent-png.png'; // En gjennomsiktig Rick
-
+    // Rick som en stilig sirkel/hode (siden vi ikke bruker eksterne bilder akkurat nå)
     const rick = {
-        x: canvas.width / 2 - 25,
-        y: canvas.height - 200,
-        w: 50,
-        h: 60,
-        vy: 0,
-        vx: 0
+        x: canvas.width / 2, y: canvas.height - 200,
+        w: 40, h: 40, vy: 0, vx: 0,
+        isJetpack: false, jetpackTimer: 0
     };
 
     let platforms = [];
-    const platW = 80;
+    let powerups = [];
+    const platW = 75;
     const platH = 15;
 
-    function initPlatforms() {
+    function initGame() {
         platforms = [];
-        // Første plattform ALLTID under Rick
-        platforms.push({ x: rick.x - 15, y: rick.y + 70, type: 'normal' });
+        // Spawn på en trygg plattform
+        platforms.push({ x: rick.x - 20, y: rick.y + 60, type: 'normal' });
 
         for (let i = 1; i < 8; i++) {
-            platforms.push({
-                x: Math.random() * (canvas.width - platW),
-                y: canvas.height - (i * (canvas.height / 7)),
-                type: Math.random() > 0.8 ? 'break' : 'normal'
-            });
+            addPlatform(canvas.height - (i * (canvas.height / 7)));
         }
     }
 
-    // Mobil-styring
+    function addPlatform(yPos) {
+        let type = Math.random() > 0.85 ? 'break' : 'normal';
+        let x = Math.random() * (canvas.width - platW);
+        platforms.push({ x, y: yPos, type });
+
+        // Sjanse for Powerup (Mikrofon)
+        if (Math.random() > 0.92) {
+            powerups.push({ x: x + 25, y: yPos - 30, w: 20, h: 25, collected: false });
+        }
+    }
+
+    // DIN JAVASCRIPT FUNKSJON (Integrert)
+    function triggerRickRoll() {
+        const overlay = document.getElementById('rickRollOverlay');
+        const video = document.getElementById('rickVideo');
+        overlay.style.display = 'flex'; 
+        video.play().catch(e => console.log("Blokkert"));
+    }
+
+    // Kontroller
     window.addEventListener('touchstart', (e) => {
         if (!gameActive) return;
-        if (e.touches[0].clientX < canvas.width / 2) rick.vx = -6;
-        else rick.vx = 6;
+        rick.vx = (e.touches[0].clientX < canvas.width / 2) ? -7 : 7;
     });
     window.addEventListener('touchend', () => rick.vx = 0);
 
     function update() {
         if (!gameActive) return;
 
-        rick.vy += gravity;
+        // Gravity og bevegelse
+        if (rick.isJetpack) {
+            rick.vy = -10;
+            rick.jetpackTimer--;
+            if (rick.jetpackTimer <= 0) rick.isJetpack = false;
+        } else {
+            rick.vy += gravity;
+        }
+
         rick.y += rick.vy;
         rick.x += rick.vx;
 
+        // Wrap-around
         if (rick.x > canvas.width) rick.x = -rick.w;
         if (rick.x < -rick.w) rick.x = canvas.width;
 
-        // Kollisjon
+        // Kollisjon med plattformer
         if (rick.vy > 0) {
-            platforms.forEach((p, index) => {
-                if (rick.x + rick.w > p.x && 
-                    rick.x < p.x + platW && 
-                    rick.y + rick.h > p.y && 
-                    rick.y + rick.h < p.y + platH + 10) {
-                    
+            platforms.forEach((p, i) => {
+                if (rick.x + rick.w > p.x && rick.x < p.x + platW && 
+                    rick.y + rick.h > p.y && rick.y + rick.h < p.y + platH + 10) {
                     if (p.type === 'break') {
-                        platforms.splice(index, 1); // Plattformen forsvinner
+                        platforms.splice(i, 1);
                     } else {
                         rick.vy = jumpStrength;
                     }
@@ -111,27 +150,39 @@
             });
         }
 
-        // Kamera-bevegelse
+        // Powerup kollisjon
+        powerups.forEach((pu, i) => {
+            if (!pu.collected && rick.x < pu.x + pu.w && rick.x + rick.w > pu.x && rick.y < pu.y + pu.h && rick.y + rick.h > pu.y) {
+                pu.collected = true;
+                rick.isJetpack = true;
+                rick.jetpackTimer = 100; // Varighet
+            }
+        });
+
+        // Kamera-scroll
         if (rick.y < canvas.height / 2) {
             let diff = canvas.height / 2 - rick.y;
             rick.y = canvas.height / 2;
-            platforms.forEach(p => {
+            score += Math.floor(diff / 10);
+            ui.innerText = "SCORE: " + score;
+
+            platforms.forEach((p, i) => {
                 p.y += diff;
                 if (p.y > canvas.height) {
-                    p.y = 0;
-                    p.x = Math.random() * (canvas.width - platW);
-                    p.type = Math.random() > 0.8 ? 'break' : 'normal';
-                    score += 10;
-                    ui.innerText = "SCORE: " + score;
+                    platforms.splice(i, 1);
+                    addPlatform(0);
                 }
+            });
+            powerups.forEach((pu, i) => {
+                pu.y += diff;
+                if (pu.y > canvas.height) powerups.splice(i, 1);
             });
         }
 
-        // Death Screen
+        // Tapt spillet
         if (rick.y > canvas.height) {
             gameActive = false;
-            document.getElementById('deathScreen').style.display = 'flex';
-            document.getElementById('rickVideo').play();
+            triggerRickRoll();
         }
 
         draw();
@@ -141,25 +192,33 @@
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Tegn Rick (Bilde hvis lastet, ellers rød boks)
-        if (rickImg.complete) {
-            ctx.drawImage(rickImg, rick.x, rick.y, rick.w, rick.h);
-        } else {
-            ctx.fillStyle = '#ff0044';
-            ctx.fillRect(rick.x, rick.y, rick.w, rick.h);
-        }
+        // Tegn Rick
+        ctx.fillStyle = rick.isJetpack ? 'gold' : '#ffcc99';
+        ctx.beginPath();
+        ctx.arc(rick.x + 20, rick.y + 20, 20, 0, Math.PI * 2);
+        ctx.fill();
+        // Hår (Rick-stil)
+        ctx.fillStyle = '#663300';
+        ctx.fillRect(rick.x + 5, rick.y, 30, 10);
 
-        // Tegn Plattformer
+        // Plattformer
         platforms.forEach(p => {
-            ctx.fillStyle = p.type === 'break' ? '#ff3300' : '#00ffcc';
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = ctx.fillStyle;
+            ctx.fillStyle = p.type === 'break' ? '#ff4444' : '#44ff44';
             ctx.fillRect(p.x, p.y, platW, platH);
-            ctx.shadowBlur = 0;
+        });
+
+        // Powerups (Mikrofon)
+        powerups.forEach(pu => {
+            if (!pu.collected) {
+                ctx.fillStyle = 'silver';
+                ctx.fillRect(pu.x, pu.y, pu.w, pu.h);
+                ctx.fillStyle = 'gold';
+                ctx.fillRect(pu.x, pu.y - 5, pu.w, 10);
+            }
         });
     }
 
-    initPlatforms();
+    initGame();
     update();
 </script>
 </body>
