@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rick Jump</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
+        canvas { display: block; background: linear-gradient(#001, #005); }
+        #ui { position: absolute; top: 10px; left: 10px; color: white; font-size: 24px; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="ui">Score: 0</div>
+    <canvas id="game"></canvas>
+
+<script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const ui = document.getElementById('ui');
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let score = 0;
+    let gravity = 0.4;
+    let jumpStrength = -12;
+    
+    const rick = {
+        x: canvas.width / 2,
+        y: canvas.height - 150,
+        w: 40,
+        h: 40,
+        vy: 0,
+        vx: 0,
+        color: '#ffcc00'
+    };
+
+    let platforms = [];
+    const platW = 70;
+    const platH = 15;
+
+    function initPlatforms() {
+        platforms = [];
+        for (let i = 0; i < 7; i++) {
+            platforms.push({
+                x: Math.random() * (canvas.width - platW),
+                y: i * (canvas.height / 7)
+            });
+        }
+    }
+
+    // Styring via trykk (siden det er enklest på mobil uten gyroskop-setup)
+    window.addEventListener('touchstart', (e) => {
+        if (e.touches[0].clientX < canvas.width / 2) rick.vx = -5;
+        else rick.vx = 5;
+    });
+    window.addEventListener('touchend', () => rick.vx = 0);
+
+    function update() {
+        rick.vy += gravity;
+        rick.y += rick.vy;
+        rick.x += rick.vx;
+
+        // Wrap around (gå ut av skjermen på venstre, kom inn på høyre)
+        if (rick.x > canvas.width) rick.x = -rick.w;
+        if (rick.x < -rick.w) rick.x = canvas.width;
+
+        // Sjekk kollisjon med plattformer (kun når han faller)
+        if (rick.vy > 0) {
+            platforms.forEach(p => {
+                if (rick.x + rick.w > p.x && 
+                    rick.x < p.x + platW && 
+                    rick.y + rick.h > p.y && 
+                    rick.y + rick.h < p.y + platH + 10) {
+                    rick.vy = jumpStrength;
+                }
+            });
+        }
+
+        // Kamera-ish: Flytt plattformer ned når Rick er høyt oppe
+        if (rick.y < canvas.height / 2) {
+            let diff = canvas.height / 2 - rick.y;
+            rick.y = canvas.height / 2;
+            platforms.forEach(p => {
+                p.y += diff;
+                if (p.y > canvas.height) {
+                    p.y = 0;
+                    p.x = Math.random() * (canvas.width - platW);
+                    score++;
+                    ui.innerText = "Score: " + score;
+                }
+            });
+        }
+
+        // Game Over
+        if (rick.y > canvas.height) {
+            alert("NEVER GONNA GIVE YOU UP! Score: " + score);
+            location.reload();
+        }
+
+        draw();
+        requestAnimationFrame(update);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Tegn Rick (foreløpig en gul firkant)
+        ctx.fillStyle = rick.color;
+        ctx.fillRect(rick.x, rick.y, rick.w, rick.h);
+
+        // Tegn Plattformer
+        ctx.fillStyle = '#0f0';
+        platforms.forEach(p => {
+            ctx.fillRect(p.x, p.y, platW, platH);
+        });
+    }
+
+    initPlatforms();
+    update();
+</script>
+</body>
+</html>
