@@ -3,15 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rick Jump</title>
+    <title>Rick Jump - Ultimate</title>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
-        canvas { display: block; background: linear-gradient(#001, #005); }
-        #ui { position: absolute; top: 10px; left: 10px; color: white; font-size: 24px; pointer-events: none; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', Courier, monospace; }
+        canvas { display: block; background: linear-gradient(#1a0033, #000022); }
+        
+        #ui { position: absolute; top: 10px; width: 100%; text-align: center; color: #0ff; font-size: 30px; font-weight: bold; text-shadow: 0 0 10px #0ff; pointer-events: none; }
+        
+        #deathScreen { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #000; z-index: 100; flex-direction: column; align-items: center; justify-content: center; 
+        }
+        #deathScreen h1 { color: #ff0044; font-size: 40px; text-shadow: 0 0 20px #f00; margin-bottom: 10px; text-align: center; }
+        video { width: 90%; max-width: 500px; border: 4px solid #fff; box-shadow: 0 0 30px #f0f; }
+        button { margin-top: 20px; padding: 15px 40px; font-size: 20px; background: #0ff; border: none; cursor: pointer; border-radius: 50px; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div id="ui">Score: 0</div>
+
+    <div id="ui">SCORE: 0</div>
+    
+    <div id="deathScreen">
+        <h1 id="deathText">YOU GOT ROLLED!</h1>
+        <video id="rickVideo" playsinline loop>
+            <source src="https://dn721809.ca.archive.org/0/items/youtube-xvFZjo5PgG0/xvFZjo5PgG0.mp4" type="video/mp4">
+        </video>
+        <button onclick="location.reload()">TRY AGAIN</button>
+    </div>
+
     <canvas id="game"></canvas>
 
 <script>
@@ -23,62 +42,76 @@
     canvas.height = window.innerHeight;
 
     let score = 0;
-    let gravity = 0.4;
-    let jumpStrength = -12;
+    let gameActive = true;
+    const gravity = 0.35;
+    const jumpStrength = -13;
     
+    const rickImg = new Image();
+    rickImg.src = 'https://www.vhv.rs/dpng/d/536-5369614_rick-astley-png-transparent-png.png'; // En gjennomsiktig Rick
+
     const rick = {
-        x: canvas.width / 2,
-        y: canvas.height - 150,
-        w: 40,
-        h: 40,
+        x: canvas.width / 2 - 25,
+        y: canvas.height - 200,
+        w: 50,
+        h: 60,
         vy: 0,
-        vx: 0,
-        color: '#ffcc00'
+        vx: 0
     };
 
     let platforms = [];
-    const platW = 70;
+    const platW = 80;
     const platH = 15;
 
     function initPlatforms() {
         platforms = [];
-        for (let i = 0; i < 7; i++) {
+        // Første plattform ALLTID under Rick
+        platforms.push({ x: rick.x - 15, y: rick.y + 70, type: 'normal' });
+
+        for (let i = 1; i < 8; i++) {
             platforms.push({
                 x: Math.random() * (canvas.width - platW),
-                y: i * (canvas.height / 7)
+                y: canvas.height - (i * (canvas.height / 7)),
+                type: Math.random() > 0.8 ? 'break' : 'normal'
             });
         }
     }
 
-    // Styring via trykk (siden det er enklest på mobil uten gyroskop-setup)
+    // Mobil-styring
     window.addEventListener('touchstart', (e) => {
-        if (e.touches[0].clientX < canvas.width / 2) rick.vx = -5;
-        else rick.vx = 5;
+        if (!gameActive) return;
+        if (e.touches[0].clientX < canvas.width / 2) rick.vx = -6;
+        else rick.vx = 6;
     });
     window.addEventListener('touchend', () => rick.vx = 0);
 
     function update() {
+        if (!gameActive) return;
+
         rick.vy += gravity;
         rick.y += rick.vy;
         rick.x += rick.vx;
 
-        // Wrap around (gå ut av skjermen på venstre, kom inn på høyre)
         if (rick.x > canvas.width) rick.x = -rick.w;
         if (rick.x < -rick.w) rick.x = canvas.width;
 
-        // Sjekk kollisjon med plattformer (kun når han faller)
+        // Kollisjon
         if (rick.vy > 0) {
-            platforms.forEach(p => {
+            platforms.forEach((p, index) => {
                 if (rick.x + rick.w > p.x && 
                     rick.x < p.x + platW && 
                     rick.y + rick.h > p.y && 
                     rick.y + rick.h < p.y + platH + 10) {
-                    rick.vy = jumpStrength;
+                    
+                    if (p.type === 'break') {
+                        platforms.splice(index, 1); // Plattformen forsvinner
+                    } else {
+                        rick.vy = jumpStrength;
+                    }
                 }
             });
         }
 
-        // Kamera-ish: Flytt plattformer ned når Rick er høyt oppe
+        // Kamera-bevegelse
         if (rick.y < canvas.height / 2) {
             let diff = canvas.height / 2 - rick.y;
             rick.y = canvas.height / 2;
@@ -87,16 +120,18 @@
                 if (p.y > canvas.height) {
                     p.y = 0;
                     p.x = Math.random() * (canvas.width - platW);
-                    score++;
-                    ui.innerText = "Score: " + score;
+                    p.type = Math.random() > 0.8 ? 'break' : 'normal';
+                    score += 10;
+                    ui.innerText = "SCORE: " + score;
                 }
             });
         }
 
-        // Game Over
+        // Death Screen
         if (rick.y > canvas.height) {
-            alert("NEVER GONNA GIVE YOU UP! Score: " + score);
-            location.reload();
+            gameActive = false;
+            document.getElementById('deathScreen').style.display = 'flex';
+            document.getElementById('rickVideo').play();
         }
 
         draw();
@@ -106,14 +141,21 @@
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Tegn Rick (foreløpig en gul firkant)
-        ctx.fillStyle = rick.color;
-        ctx.fillRect(rick.x, rick.y, rick.w, rick.h);
+        // Tegn Rick (Bilde hvis lastet, ellers rød boks)
+        if (rickImg.complete) {
+            ctx.drawImage(rickImg, rick.x, rick.y, rick.w, rick.h);
+        } else {
+            ctx.fillStyle = '#ff0044';
+            ctx.fillRect(rick.x, rick.y, rick.w, rick.h);
+        }
 
         // Tegn Plattformer
-        ctx.fillStyle = '#0f0';
         platforms.forEach(p => {
+            ctx.fillStyle = p.type === 'break' ? '#ff3300' : '#00ffcc';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = ctx.fillStyle;
             ctx.fillRect(p.x, p.y, platW, platH);
+            ctx.shadowBlur = 0;
         });
     }
 
