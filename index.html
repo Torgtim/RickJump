@@ -3,49 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rick Jump - Upgrade Edition</title>
+    <title>Rick Jump: Defender</title>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', sans-serif; }
-        canvas { display: block; background: linear-gradient(#001, #002, #005); }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', sans-serif; touch-action: none; }
+        canvas { display: block; background: linear-gradient(#000428, #004e92); }
         
-        #ui { 
-            position: absolute; top: 10px; width: 100%; text-align: center; 
-            color: white; font-size: 28px; font-weight: bold; pointer-events: none; z-index: 10;
-        }
+        #ui { position: absolute; top: 10px; width: 100%; text-align: center; color: white; font-size: 24px; pointer-events: none; z-index: 10; }
+        #cooldown-bar { width: 100px; height: 10px; background: #333; margin: 5px auto; border: 1px solid white; }
+        #cooldown-fill { width: 100%; height: 100%; background: #0ff; transition: width 0.1s; }
 
-        /* DIN RICKROLL KODE HER */
+        /* DIN RICKROLL KODE */
         #rickRollOverlay {
-            display: none; 
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: black;
-            z-index: 9999;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: black;
+            z-index: 9999; flex-direction: column; align-items: center; justify-content: center;
         }
+        #rickVideo { width: 100%; max-height: 80vh; }
+        #rickRollOverlay button { margin-top: 20px; padding: 15px 30px; font-size: 20px; cursor: pointer; border-radius: 10px; font-weight: bold; }
 
-        #rickVideo {
-            width: 100%;
-            max-height: 80vh;
+        /* KONTROLLER */
+        .atk-btn {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            width: 80px; height: 80px; background: rgba(255,215,0,0.3);
+            border: 3px solid gold; border-radius: 50%; color: gold;
+            font-size: 40px; display: flex; align-items: center; justify-content: center;
+            z-index: 20; user-select: none;
         }
-
-        #rickRollOverlay button {
-            margin-top: 20px;
-            padding: 15px 30px;
-            font-size: 20px;
-            cursor: pointer;
-            background: #fff;
-            border: none;
-            border-radius: 10px;
-            font-weight: bold;
-        }
+        .atk-btn:active { background: gold; color: black; }
     </style>
 </head>
 <body>
 
-    <div id="ui">SCORE: 0</div>
+    <div id="ui">
+        SCORE: <span id="scoreVal">0</span>
+        <div id="cooldown-bar"><div id="cooldown-fill"></div></div>
+    </div>
+
+    <div class="atk-btn" id="atkBtn">🎤</div>
 
     <div id="rickRollOverlay">
         <video id="rickVideo" playsinline loop>
@@ -59,131 +53,124 @@
 <script>
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
-    const ui = document.getElementById('ui');
-
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
     let score = 0;
     let gameActive = true;
-    const gravity = 0.4;
-    const jumpStrength = -14;
+    const gravity = 0.38;
+    const jumpStrength = -13;
     
-    // Rick som en stilig sirkel/hode (siden vi ikke bruker eksterne bilder akkurat nå)
-    const rick = {
-        x: canvas.width / 2, y: canvas.height - 200,
-        w: 40, h: 40, vy: 0, vx: 0,
-        isJetpack: false, jetpackTimer: 0
+    let rick = {
+        x: canvas.width/2, y: canvas.height-200, w: 40, h: 40,
+        vx: 0, vy: 0, atkCooldown: 0, atkActive: 0
     };
 
     let platforms = [];
-    let powerups = [];
-    const platW = 75;
-    const platH = 15;
+    let enemies = [];
+    const platW = 75, platH = 15;
 
-    function initGame() {
-        platforms = [];
-        // Spawn på en trygg plattform
-        platforms.push({ x: rick.x - 20, y: rick.y + 60, type: 'normal' });
-
-        for (let i = 1; i < 8; i++) {
-            addPlatform(canvas.height - (i * (canvas.height / 7)));
-        }
-    }
-
-    function addPlatform(yPos) {
-        let type = Math.random() > 0.85 ? 'break' : 'normal';
+    function spawnPlatform(y, isFirst = false) {
+        let type = isFirst ? 'normal' : ['normal', 'normal', 'moving', 'break', 'boost'][Math.floor(Math.random()*5)];
         let x = Math.random() * (canvas.width - platW);
-        platforms.push({ x, y: yPos, type });
+        let p = { x, y, type, hits: 0, vx: (type === 'moving' ? 2 : 0) };
+        platforms.push(p);
 
-        // Sjanse for Powerup (Mikrofon)
-        if (Math.random() > 0.92) {
-            powerups.push({ x: x + 25, y: yPos - 30, w: 20, h: 25, collected: false });
+        if (!isFirst && Math.random() > 0.7) {
+            enemies.push({ x: x + 10, y: y - 30, w: 25, h: 25, vx: 1.5, parent: p });
         }
     }
 
-    // DIN JAVASCRIPT FUNKSJON (Integrert)
-    function triggerRickRoll() {
-        const overlay = document.getElementById('rickRollOverlay');
-        const video = document.getElementById('rickVideo');
-        overlay.style.display = 'flex'; 
-        video.play().catch(e => console.log("Blokkert"));
+    function init() {
+        for(let i=0; i<6; i++) spawnPlatform(canvas.height - (i * 140), i === 0);
     }
 
-    // Kontroller
-    window.addEventListener('touchstart', (e) => {
-        if (!gameActive) return;
-        rick.vx = (e.touches[0].clientX < canvas.width / 2) ? -7 : 7;
+    // Input
+    window.addEventListener('touchstart', e => {
+        if(e.target.id === 'atkBtn') {
+            if(rick.atkCooldown <= 0) {
+                rick.atkActive = 20; rick.atkCooldown = 300; // 5 sek (60fps * 5)
+            }
+            return;
+        }
+        rick.vx = (e.touches[0].clientX < canvas.width/2) ? -6 : 6;
     });
     window.addEventListener('touchend', () => rick.vx = 0);
 
+    function triggerRickRoll() {
+        gameActive = false;
+        document.getElementById('rickRollOverlay').style.display = 'flex';
+        document.getElementById('rickVideo').play().catch(() => {});
+    }
+
     function update() {
-        if (!gameActive) return;
+        if(!gameActive) return;
 
-        // Gravity og bevegelse
-        if (rick.isJetpack) {
-            rick.vy = -10;
-            rick.jetpackTimer--;
-            if (rick.jetpackTimer <= 0) rick.isJetpack = false;
-        } else {
-            rick.vy += gravity;
-        }
-
+        rick.vy += gravity;
         rick.y += rick.vy;
         rick.x += rick.vx;
 
-        // Wrap-around
-        if (rick.x > canvas.width) rick.x = -rick.w;
-        if (rick.x < -rick.w) rick.x = canvas.width;
-
-        // Kollisjon med plattformer
-        if (rick.vy > 0) {
-            platforms.forEach((p, i) => {
-                if (rick.x + rick.w > p.x && rick.x < p.x + platW && 
-                    rick.y + rick.h > p.y && rick.y + rick.h < p.y + platH + 10) {
-                    if (p.type === 'break') {
-                        platforms.splice(i, 1);
-                    } else {
-                        rick.vy = jumpStrength;
-                    }
-                }
-            });
+        if(rick.atkCooldown > 0) {
+            rick.atkCooldown--;
+            document.getElementById('cooldown-fill').style.width = (1 - rick.atkCooldown/300)*100 + "%";
         }
+        if(rick.atkActive > 0) rick.atkActive--;
 
-        // Powerup kollisjon
-        powerups.forEach((pu, i) => {
-            if (!pu.collected && rick.x < pu.x + pu.w && rick.x + rick.w > pu.x && rick.y < pu.y + pu.h && rick.y + rick.h > pu.y) {
-                pu.collected = true;
-                rick.isJetpack = true;
-                rick.jetpackTimer = 100; // Varighet
+        // Wrap
+        if(rick.x > canvas.width) rick.x = -rick.w;
+        if(rick.x < -rick.w) rick.x = canvas.width;
+
+        // Plattformer
+        platforms.forEach((p, i) => {
+            if(p.type === 'moving') {
+                p.x += p.vx;
+                if(p.x < 0 || p.x > canvas.width - platW) p.vx *= -1;
+            }
+
+            if(rick.vy > 0 && rick.x+rick.w > p.x && rick.x < p.x+platW && rick.y+rick.h > p.y && rick.y+rick.h < p.y+platH+10) {
+                if(p.type === 'break') {
+                    p.hits++;
+                    if(p.hits > 1) platforms.splice(i, 1);
+                    else rick.vy = jumpStrength;
+                } else if(p.type === 'boost') {
+                    rick.vy = jumpStrength * 1.8;
+                } else {
+                    rick.vy = jumpStrength;
+                }
             }
         });
 
-        // Kamera-scroll
-        if (rick.y < canvas.height / 2) {
-            let diff = canvas.height / 2 - rick.y;
-            rick.y = canvas.height / 2;
-            score += Math.floor(diff / 10);
-            ui.innerText = "SCORE: " + score;
+        // Fiender
+        enemies.forEach((en, i) => {
+            en.x += en.vx;
+            if(en.x < en.parent.x || en.x > en.parent.x + platW - en.w) en.vx *= -1;
+            en.y = en.parent.y - 30;
 
+            // Bli truffet av fiende
+            if(rick.x < en.x+en.w && rick.x+rick.w > en.x && rick.y < en.y+en.h && rick.y+rick.h > en.y) {
+                rick.vx = (rick.x < en.x) ? -15 : 15; // Knockback
+            }
+
+            // Angrep fiende
+            if(rick.atkActive > 0) {
+                let dist = Math.hypot(rick.x - en.x, rick.y - en.y);
+                if(dist < 150) enemies.splice(i, 1);
+            }
+        });
+
+        // Scroll
+        if(rick.y < canvas.height/2) {
+            let d = canvas.height/2 - rick.y;
+            rick.y = canvas.height/2;
+            score += Math.floor(d/5);
+            document.getElementById('scoreVal').innerText = score;
             platforms.forEach((p, i) => {
-                p.y += diff;
-                if (p.y > canvas.height) {
-                    platforms.splice(i, 1);
-                    addPlatform(0);
-                }
-            });
-            powerups.forEach((pu, i) => {
-                pu.y += diff;
-                if (pu.y > canvas.height) powerups.splice(i, 1);
+                p.y += d;
+                if(p.y > canvas.height) { platforms.splice(i, 1); spawnPlatform(0); }
             });
         }
 
-        // Tapt spillet
-        if (rick.y > canvas.height) {
-            gameActive = false;
-            triggerRickRoll();
-        }
+        if(rick.y > canvas.height) triggerRickRoll();
 
         draw();
         requestAnimationFrame(update);
@@ -192,33 +179,34 @@
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Tegn Rick
-        ctx.fillStyle = rick.isJetpack ? 'gold' : '#ffcc99';
-        ctx.beginPath();
-        ctx.arc(rick.x + 20, rick.y + 20, 20, 0, Math.PI * 2);
-        ctx.fill();
-        // Hår (Rick-stil)
-        ctx.fillStyle = '#663300';
-        ctx.fillRect(rick.x + 5, rick.y, 30, 10);
+        // Tegn Angrep-sirkel
+        if(rick.atkActive > 0) {
+            ctx.fillStyle = `rgba(0, 255, 255, ${rick.atkActive/20})`;
+            ctx.beginPath();
+            ctx.arc(rick.x + 20, rick.y + 20, 120, 0, Math.PI*2);
+            ctx.fill();
+        }
 
-        // Plattformer
+        // Tegn Rick
+        ctx.fillStyle = '#ffcc99';
+        ctx.fillRect(rick.x, rick.y, rick.w, rick.h);
+        ctx.fillStyle = '#663300'; ctx.fillRect(rick.x, rick.y, rick.w, 10); // Hår
+
+        // Tegn Plattformer
         platforms.forEach(p => {
-            ctx.fillStyle = p.type === 'break' ? '#ff4444' : '#44ff44';
+            if(p.type === 'break') ctx.fillStyle = p.hits === 1 ? '#900' : '#f60';
+            else if(p.type === 'moving') ctx.fillStyle = '#0cf';
+            else if(p.type === 'boost') ctx.fillStyle = '#ff0';
+            else ctx.fillStyle = '#4f4';
             ctx.fillRect(p.x, p.y, platW, platH);
         });
 
-        // Powerups (Mikrofon)
-        powerups.forEach(pu => {
-            if (!pu.collected) {
-                ctx.fillStyle = 'silver';
-                ctx.fillRect(pu.x, pu.y, pu.w, pu.h);
-                ctx.fillStyle = 'gold';
-                ctx.fillRect(pu.x, pu.y - 5, pu.w, 10);
-            }
-        });
+        // Tegn Fiender
+        ctx.fillStyle = '#a0f';
+        enemies.forEach(en => ctx.fillRect(en.x, en.y, en.w, en.h));
     }
 
-    initGame();
+    init();
     update();
 </script>
 </body>
