@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rick Jump: High Score Edition</title>
+    <title>Rick Jump: Fixed & Ready</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', sans-serif; touch-action: none; }
         canvas { display: block; background: linear-gradient(#000428, #004e92); }
@@ -12,34 +12,38 @@
         #cooldown-bar { width: 100px; height: 10px; background: #333; margin: 5px auto; border: 1px solid white; }
         #cooldown-fill { width: 100%; height: 100%; background: #0ff; transition: width 0.1s; }
 
-        /* RICKROLL & HIGH SCORE OVERLAY */
+        /* MINIMAL MENY-KNAPP */
+        #menuBtn {
+            position: absolute; top: 15px; left: 15px;
+            width: 40px; height: 40px; background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3); border-radius: 8px;
+            color: white; font-size: 24px; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 100; text-decoration: none;
+        }
+
+        /* RICKROLL OVERLAY */
         #rickRollOverlay {
             display: none; position: fixed; top: 0; left: 0;
             width: 100%; height: 100%; background: black;
             z-index: 9999; flex-direction: column; align-items: center; justify-content: center;
             color: white; text-align: center;
         }
-        #scoreBoard { margin-bottom: 15px; }
-        #scoreBoard h2 { margin: 5px 0; color: gold; text-shadow: 0 0 10px gold; }
-        
-        #rickVideo { width: 100%; max-height: 60vh; border-top: 2px solid #333; border-bottom: 2px solid #333; }
-        
-        #rickRollOverlay button { 
-            margin-top: 20px; padding: 15px 40px; font-size: 22px; 
-            cursor: pointer; border-radius: 50px; font-weight: bold;
-            background: #0ff; border: none; box-shadow: 0 0 15px #0ff;
-        }
+        #rickVideo { width: 100%; max-height: 60vh; }
+        #rickRollOverlay button { margin-top: 20px; padding: 15px 40px; font-size: 22px; cursor: pointer; border-radius: 50px; font-weight: bold; background: #0ff; border: none; }
 
         .atk-btn {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             width: 85px; height: 85px; background: rgba(255,215,0,0.2);
             border: 4px solid gold; border-radius: 50%; color: gold;
             font-size: 45px; display: flex; align-items: center; justify-content: center;
-            z-index: 20; user-select: none; box-shadow: 0 0 15px rgba(255,215,0,0.5);
+            z-index: 20; user-select: none;
         }
     </style>
 </head>
 <body>
+
+    <div id="menuBtn" onclick="goToMenu()">...</div>
 
     <div id="ui">
         SCORE: <span id="scoreVal">0</span>
@@ -71,7 +75,7 @@
     let score = 0;
     let highScore = localStorage.getItem('rickJumpHighScore') || 0;
     let gameActive = true;
-    let platformCount = 0; // Holder styr på hvor mange plattformer som er laget
+    let platformCount = 0;
     const gravity = 0.38;
     const jumpStrength = -14;
     
@@ -84,54 +88,45 @@
 
     let platforms = [];
     let enemies = [];
-    const platW = 80, platH = 15;
+    const platW = 85, platH = 15;
+
+    function goToMenu() {
+        // Her kan du endre til siden du vil sende dem til senere
+        alert("Sender deg til meny-siden (når den er klar!).");
+        // window.location.href = "meny.html"; 
+    }
 
     function spawnPlatform(y, forceNormal = false) {
         platformCount++;
-        // Type-logikk: De første 5 er alltid grønne (normale)
         let type = forceNormal || platformCount <= 5 ? 'normal' : ['normal', 'normal', 'moving', 'break', 'boost'][Math.floor(Math.random()*5)];
         
         let x = Math.random() * (canvas.width - platW);
-        let p = { x, y, type, hits: 0, vx: (type === 'moving' ? 2.5 : 0) };
+        // Økt fart på moving platforms for mer utfordring
+        let p = { x, y, type, hits: 0, vx: (type === 'moving' ? 3 : 0) };
         platforms.push(p);
 
-        // Fiende-logikk: Ingen fiender på de første 5 plattformene
         if (platformCount > 5 && Math.random() > 0.75) {
-            enemies.push({ x: x + 10, y: y - 30, w: 25, h: 25, vx: 1.8, parent: p });
+            enemies.push({ x: x + 10, y: y - 30, w: 25, h: 25, vx: 2, parent: p });
         }
     }
 
     function init() {
-        // Lag den aller første plattformen rett under der Rick spawner
         spawnPlatform(rick.y + 80, true); 
-        
-        // Fyll resten av skjermen
-        for(let i=1; i<7; i++) {
-            spawnPlatform(canvas.height - (i * 135));
-        }
+        for(let i=1; i<7; i++) spawnPlatform(canvas.height - (i * 140));
     }
 
-    // Input-håndtering
     window.addEventListener('touchstart', e => {
-        if(e.target.id === 'atkBtn') {
-            if(rick.atkCooldown <= 0) {
-                rick.atkActive = 25; rick.atkCooldown = 240; // 4 sek cooldown
-            }
-            return;
-        }
+        if(e.target.id === 'atkBtn' || e.target.id === 'menuBtn') return;
         rick.vx = (e.touches[0].clientX < canvas.width/2) ? -7 : 7;
     });
     window.addEventListener('touchend', () => rick.vx = 0);
 
     function triggerRickRoll() {
         gameActive = false;
-        
-        // Oppdater High Score hvis nødvendig
         if (score > highScore) {
             highScore = score;
             localStorage.setItem('rickJumpHighScore', highScore);
         }
-
         document.getElementById('finalScore').innerText = score;
         document.getElementById('highScoreVal').innerText = highScore;
         document.getElementById('rickRollOverlay').style.display = 'flex';
@@ -145,58 +140,52 @@
         rick.y += rick.vy;
         rick.x += rick.vx;
 
-        // Cooldown bar logikk
         if(rick.atkCooldown > 0) {
             rick.atkCooldown--;
             document.getElementById('cooldown-fill').style.width = (1 - rick.atkCooldown/240)*100 + "%";
         }
         if(rick.atkActive > 0) rick.atkActive--;
 
-        // Screen Wrap
         if(rick.x > canvas.width) rick.x = -rick.w;
         if(rick.x < -rick.w) rick.x = canvas.width;
 
-        // Plattformer kollisjon
-        if(rick.vy > 0) {
-            platforms.forEach((p, i) => {
-                if(rick.x+rick.w > p.x && rick.x < p.x+platW && rick.y+rick.h > p.y && rick.y+rick.h < p.y+platH+10) {
-                    if(p.type === 'break') {
-                        p.hits++;
-                        if(p.hits > 1) {
-                            platforms.splice(i, 1); // Brekker helt på andre hopp
-                        } else {
-                            rick.vy = jumpStrength;
-                        }
-                    } else if(p.type === 'boost') {
-                        rick.vy = jumpStrength * 1.9; // Gull-hopp!
-                    } else {
-                        rick.vy = jumpStrength;
-                    }
-                }
-            });
-        }
+        // Plattform-oppdatering og kollisjon
+        platforms.forEach((p, i) => {
+            // BEVEGELSE: Her fikset vi Moving Platforms
+            if(p.type === 'moving') {
+                p.x += p.vx;
+                if(p.x <= 0 || p.x >= canvas.width - platW) p.vx *= -1;
+            }
 
-        // Fiende-logikk
+            if(rick.vy > 0 && rick.x+rick.w > p.x && rick.x < p.x+platW && rick.y+rick.h > p.y && rick.y+rick.h < p.y+platH+10) {
+                if(p.type === 'break') {
+                    p.hits++;
+                    if(p.hits > 1) platforms.splice(i, 1);
+                    else rick.vy = jumpStrength;
+                } else if(p.type === 'boost') {
+                    rick.vy = jumpStrength * 1.9;
+                } else {
+                    rick.vy = jumpStrength;
+                }
+            }
+        });
+
         enemies.forEach((en, i) => {
             en.x += en.vx;
-            // Fienden patruljerer plattformen sin
             if(en.x < en.parent.x || en.x > en.parent.x + platW - en.w) en.vx *= -1;
             en.y = en.parent.y - 30;
 
-            // Rick blir truffet
             if(rick.x < en.x+en.w && rick.x+rick.w > en.x && rick.y < en.y+en.h && rick.y+rick.h > en.y) {
-                rick.vx = (rick.x < en.x) ? -18 : 18; // Kraftig knockback
-                rick.vy = 5; // Stopper hoppet litt
+                rick.vx = (rick.x < en.x) ? -18 : 18;
+                rick.vy = 5;
             }
 
-            // Mikrofon-angrep (Aura)
             if(rick.atkActive > 0) {
                 let dist = Math.hypot((rick.x+20) - (en.x+12), (rick.y+20) - (en.y+12));
                 if(dist < 140) enemies.splice(i, 1);
             }
         });
 
-        // Scrolling
         if(rick.y < canvas.height/2) {
             let d = canvas.height/2 - rick.y;
             rick.y = canvas.height/2;
@@ -205,10 +194,7 @@
             
             platforms.forEach((p, i) => {
                 p.y += d;
-                if(p.y > canvas.height) { 
-                    platforms.splice(i, 1); 
-                    spawnPlatform(0); 
-                }
+                if(p.y > canvas.height) { platforms.splice(i, 1); spawnPlatform(0); }
             });
             enemies.forEach((en, i) => {
                 if(en.y > canvas.height) enemies.splice(i, 1);
@@ -224,52 +210,29 @@
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Angreps-effekt
         if(rick.atkActive > 0) {
             ctx.strokeStyle = `rgba(0, 255, 255, ${rick.atkActive/25})`;
             ctx.lineWidth = 5;
             ctx.beginPath();
             ctx.arc(rick.x + 20, rick.y + 20, 100 - rick.atkActive*2, 0, Math.PI*2);
             ctx.stroke();
-            ctx.fillStyle = `rgba(255, 255, 255, 0.1)`;
-            ctx.fill();
         }
 
-        // Tegn Rick
         ctx.fillStyle = '#ffcc99';
         ctx.fillRect(rick.x, rick.y, rick.w, rick.h);
-        ctx.fillStyle = '#663300'; // Hår
+        ctx.fillStyle = '#663300';
         ctx.fillRect(rick.x - 2, rick.y - 5, rick.w + 4, 12);
 
-        // Tegn Plattformer
         platforms.forEach(p => {
-            if(p.type === 'break') {
-                ctx.fillStyle = p.hits === 1 ? '#500' : '#f60'; // Mørkere når den er nær ved å brekke
-            } else if(p.type === 'moving') {
-                ctx.fillStyle = '#0cf';
-            } else if(p.type === 'boost') {
-                ctx.fillStyle = '#ff0';
-            } else {
-                ctx.fillStyle = '#4f4';
-            }
+            if(p.type === 'break') ctx.fillStyle = p.hits === 1 ? '#500' : '#f60';
+            else if(p.type === 'moving') ctx.fillStyle = '#0cf';
+            else if(p.type === 'boost') ctx.fillStyle = '#ff0';
+            else ctx.fillStyle = '#4f4';
             ctx.fillRect(p.x, p.y, platW, platH);
-            
-            // Tegn bevegelse på de bevegelige
-            if(p.type === 'moving') {
-                ctx.fillStyle = 'rgba(255,255,255,0.3)';
-                ctx.fillRect(p.x, p.y + platH/2, platW, 2);
-            }
         });
 
-        // Tegn Fiender (Haters)
         ctx.fillStyle = '#a0f';
-        enemies.forEach(en => {
-            ctx.fillRect(en.x, en.y, en.w, en.h);
-            ctx.fillStyle = 'white'; // Små øyne på fiendene
-            ctx.fillRect(en.x+4, en.y+5, 4, 4);
-            ctx.fillRect(en.x+17, en.y+5, 4, 4);
-            ctx.fillStyle = '#a0f';
-        });
+        enemies.forEach(en => ctx.fillRect(en.x, en.y, en.w, en.h));
     }
 
     init();
