@@ -2,90 +2,294 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rick Shop</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rick Jump: Hater Slayer</title>
     <style>
-        body { background: #000428; color: white; font-family: 'Courier New', sans-serif; text-align: center; margin: 0; padding: 20px; }
-        h1 { color: gold; text-shadow: 0 0 10px gold; }
-        .coin-display { font-size: 24px; margin-bottom: 30px; border-bottom: 2px solid #333; padding: 10px; }
-        .shop-item { background: rgba(255,255,255,0.1); border: 2px solid #444; border-radius: 15px; padding: 15px; margin: 15px auto; max-width: 300px; }
-        .price { color: #0ff; font-weight: bold; display: block; margin: 5px 0; }
-        .buy-btn { background: #4f4; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; border-radius: 5px; width: 100%; }
-        .back-btn { position: absolute; top: 10px; left: 10px; background: none; border: 1px solid white; color: white; padding: 5px 15px; cursor: pointer; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', sans-serif; touch-action: none; }
+        canvas { display: block; background: linear-gradient(#000428, #004e92); }
+        
+        #ui { position: absolute; top: 10px; width: 100%; text-align: center; color: white; font-size: 20px; pointer-events: none; z-index: 10; }
+        #cooldown-bar { width: 100px; height: 10px; background: #333; margin: 5px auto; border: 1px solid white; }
+        #cooldown-fill { width: 100%; height: 100%; background: #0ff; transition: width 0.1s; }
+
+        /* Menyknapp med varsel-effekt */
+        #menuBtn {
+            position: absolute; top: 15px; left: 15px;
+            width: 45px; height: 45px; background: rgba(255,255,255,0.1);
+            border: 2px solid white; border-radius: 12px;
+            color: white; font-size: 24px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 100; transition: 0.3s;
+        }
+        .shop-alert { 
+            border-color: gold !important; 
+            box-shadow: 0 0 15px gold; 
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        #rickRollOverlay {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: black;
+            z-index: 9999; flex-direction: column; align-items: center; justify-content: center;
+            color: white; text-align: center;
+        }
+        #rickVideo { width: 100%; max-height: 50vh; }
+        .hi-score { color: gold; font-weight: bold; font-size: 22px; margin-top: 5px; }
+
+        button { 
+            margin-top: 20px; padding: 15px 40px; font-size: 20px; 
+            cursor: pointer; border-radius: 50px; font-weight: bold;
+            background: #0ff; border: none;
+        }
+
+        .atk-btn {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            width: 85px; height: 85px; background: rgba(255,215,0,0.2);
+            border: 4px solid gold; border-radius: 50%; color: gold;
+            font-size: 45px; display: flex; align-items: center; justify-content: center;
+            z-index: 20;
+        }
     </style>
 </head>
 <body>
 
-    <button class="back-btn" onclick="location.href='index.html'"><- SPILL</button>
+    <div id="menuBtn" onclick="location.href='menu.html'">...</div>
 
-    <h1>RICK SHOP</h1>
-    <div class="coin-display">💰 RICK-COINS: <span id="balance">0</span></div>
-
-    <div class="shop-item">
-        <h3>Neon-Rick (Skin)</h3>
-        <p>Mørk stil med lysende hår!</p>
-        <span class="price">10,000 COINS</span>
-        <button class="buy-btn" id="btn-neon" onclick="buy('neon', 10000)">KJØP</button>
+    <div id="ui">
+        SCORE: <span id="scoreVal">0</span> | 💰 <span id="coinVal">0</span>
+        <div id="cooldown-bar"><div id="cooldown-fill"></div></div>
     </div>
 
-    <div class="shop-item">
-        <h3>Gull-Rick (Skin)</h3>
-        <p>Ren luksus.</p>
-        <span class="price">50,000 COINS</span>
-        <button class="buy-btn" id="btn-gold" onclick="buy('gold', 50000)">KJØP</button>
+    <div class="atk-btn" id="atkBtn">🎤</div>
+
+    <div id="rickRollOverlay">
+        <h1 style="color: #ff0044;">GAME OVER</h1>
+        <div id="finalScoreDisplay">Score: 0</div>
+        <div class="hi-score">BEST: <span id="hiScoreDisplay">0</span></div>
+        <video id="rickVideo" playsinline loop>
+            <source src="https://dn721809.ca.archive.org/0/items/youtube-xvFZjo5PgG0/xvFZjo5PgG0.mp4" type="video/mp4">
+        </video>
+        <button onclick="location.reload()">SPILL IGJEN</button>
     </div>
 
-    <div class="shop-item">
-        <h3>Sveve-Rick (Skin)</h3>
-        <p>Rick svaver over plattformene.</p>
-        <span class="price">99,000 COINS</span>
-        <button class="buy-btn" id="btn-hover" onclick="buy('hover', 99000)">KJØP</button>
-    </div>
+    <canvas id="game"></canvas>
 
-    <div class="shop-item">
-        <h3>Uendelig Mikrofon</h3>
-        <p>Ingen ventetid på angrep!</p>
-        <span class="price">250,000 COINS</span>
-        <button class="buy-btn" id="btn-mic" onclick="buy('mic', 250000)">KJØP</button>
-    </div>
+<script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-    <script>
-        let balance = parseInt(localStorage.getItem('rickCoins')) || 0;
-        let owned = JSON.parse(localStorage.getItem('ownedItems')) || [];
+    let score = 0;
+    let highScore = parseInt(localStorage.getItem('rickJumpHighScore')) || 0;
+    let coins = parseInt(localStorage.getItem('rickCoins')) || 0;
+    let activeSkin = localStorage.getItem('activeSkin') || 'default';
+    let ownedItems = JSON.parse(localStorage.getItem('ownedItems')) || [];
+    let hasInfiniteMic = ownedItems.includes('mic');
+    
+    let combo = 0;
+    let lastKillTime = 0;
+    let comboDisplayTimer = 0;
+    let gameActive = true;
+    let platformCount = 0;
+    
+    let rick = {
+        x: canvas.width/2 - 20, y: canvas.height - 250, w: 40, h: 40,
+        vx: 0, vy: 0, atkCooldown: 0, atkActive: 0
+    };
 
-        function updateUI() {
-            document.getElementById('balance').innerText = balance.toLocaleString();
-            checkOwned('neon', 'btn-neon');
-            checkOwned('gold', 'btn-gold');
-            checkOwned('hover', 'btn-hover');
-            checkOwned('mic', 'btn-mic');
+    let platforms = [];
+    let enemies = [];
+
+    function spawnPlatform(y, forceNormal = false) {
+        platformCount++;
+        let type = forceNormal || platformCount <= 5 ? 'normal' : ['normal', 'normal', 'moving', 'break', 'boost'][Math.floor(Math.random()*5)];
+        let x = Math.random() * (canvas.width - 85);
+        let p = { x, y, type, hits: 0, vx: (type === 'moving' ? 3 : 0) };
+        platforms.push(p);
+
+        if (platformCount > 5 && Math.random() > 0.78) {
+            enemies.push({ x: x + 15, y: y - 30, w: 25, h: 25, vx: 2, parent: p });
         }
+    }
 
-        function checkOwned(id, btnId) {
-            if (owned.includes(id)) {
-                let btn = document.getElementById(btnId);
-                btn.innerText = "AKTIVER";
-                btn.style.background = "#0ff";
-                btn.onclick = () => {
-                    localStorage.setItem('activeSkin', id);
-                    alert(id + " aktivert!");
-                };
+    window.addEventListener('touchstart', e => {
+        if(e.target.id === 'atkBtn') {
+            if(rick.atkCooldown <= 0 || hasInfiniteMic) {
+                rick.atkActive = 25; 
+                rick.atkCooldown = hasInfiniteMic ? 10 : 240;
+            }
+            return;
+        }
+        if(e.target.id === 'menuBtn') return;
+        rick.vx = (e.touches[0].clientX < canvas.width/2) ? -7 : 7;
+    });
+    window.addEventListener('touchend', e => { if(e.target.id !== 'atkBtn') rick.vx = 0; });
+
+    function init() {
+        spawnPlatform(rick.y + 80, true); 
+        for(let i=1; i<7; i++) spawnPlatform(canvas.height - (i * 145));
+        document.getElementById('coinVal').innerText = coins;
+    }
+
+    function checkShopAlert() {
+        // Hvis du har råd til Neon-Rick (10k) og ikke eier den
+        if (coins >= 10000 && !ownedItems.includes('neon')) {
+            document.getElementById('menuBtn').classList.add('shop-alert');
+        } else {
+            document.getElementById('menuBtn').classList.remove('shop-alert');
+        }
+    }
+
+    function update() {
+        if(!gameActive) return;
+
+        rick.vy += 0.38;
+        rick.y += rick.vy;
+        rick.x += rick.vx;
+
+        if(rick.atkCooldown > 0) {
+            rick.atkCooldown--;
+            document.getElementById('cooldown-fill').style.width = (1 - rick.atkCooldown/240)*100 + "%";
+        }
+        if(rick.atkActive > 0) rick.atkActive--;
+        if(comboDisplayTimer > 0) comboDisplayTimer--;
+
+        if(rick.x > canvas.width) rick.x = -rick.w;
+        if(rick.x < -rick.w) rick.x = canvas.width;
+
+        checkShopAlert();
+
+        for (let i = platforms.length - 1; i >= 0; i--) {
+            let p = platforms[i];
+            if(p.type === 'moving') {
+                p.x += p.vx;
+                if(p.x <= 0 || p.x >= canvas.width - 85) p.vx *= -1;
+            }
+            if(rick.vy > 0 && rick.x+rick.w > p.x && rick.x < p.x+85 && rick.y+rick.h > p.y && rick.y+rick.h < p.y+25) {
+                if(p.type === 'break') {
+                    p.hits++;
+                    if(p.hits > 1) platforms.splice(i, 1);
+                    else rick.vy = -14;
+                } else {
+                    rick.vy = (p.type === 'boost') ? -25 : -14;
+                }
             }
         }
 
-        function buy(id, price) {
-            if (balance >= price) {
-                balance -= price;
-                owned.push(id);
-                localStorage.setItem('rickCoins', balance);
-                localStorage.setItem('ownedItems', JSON.stringify(owned));
-                updateUI();
-                alert("Kjøpt!");
-            } else {
-                alert("Ikke nok coins!");
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            let en = enemies[i];
+            en.x += en.vx;
+            if(en.x < en.parent.x || en.x > en.parent.x + 60) en.vx *= -1;
+            en.y = en.parent.y - 30;
+
+            if (en.y > canvas.height + 100) { enemies.splice(i, 1); continue; }
+
+            if(rick.x < en.x+en.w && rick.x+rick.w > en.x && rick.y < en.y+en.h && rick.y+rick.h > en.y) {
+                if(rick.atkActive === 0) { rick.vx = (rick.x < en.x) ? -15 : 15; rick.vy = 5; }
+            }
+
+            if(rick.atkActive > 0) {
+                let dist = Math.hypot((rick.x+20)-(en.x+12), (rick.y+20)-(en.y+12));
+                if(dist < 130) {
+                    enemies.splice(i, 1);
+                    let now = Date.now();
+                    if (now - lastKillTime < 1500) combo++; else combo = 1;
+                    lastKillTime = now;
+                    comboDisplayTimer = 40;
+                    coins += (5 * combo);
+                    document.getElementById('coinVal').innerText = coins;
+                    localStorage.setItem('rickCoins', coins);
+                }
             }
         }
-        updateUI();
-    </script>
+
+        if(rick.y < canvas.height/2) {
+            let d = canvas.height/2 - rick.y;
+            rick.y = canvas.height/2;
+            score += Math.floor(d/5);
+            document.getElementById('scoreVal').innerText = score;
+            platforms.forEach((p, i) => {
+                p.y += d;
+                if(p.y > canvas.height + 50) { platforms.splice(i, 1); spawnPlatform(-50); }
+            });
+        }
+
+        if(rick.y > canvas.height) {
+            gameActive = false;
+            if(score > highScore) localStorage.setItem('rickJumpHighScore', score);
+            coins += Math.floor(score / 10);
+            localStorage.setItem('rickCoins', coins);
+            document.getElementById('finalScoreDisplay').innerText = "Score: " + score;
+            document.getElementById('hiScoreDisplay').innerText = localStorage.getItem('rickJumpHighScore');
+            document.getElementById('rickRollOverlay').style.display = 'flex';
+            document.getElementById('rickVideo').play();
+        }
+
+        draw();
+        requestAnimationFrame(update);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if(rick.atkActive > 0) {
+            ctx.strokeStyle = '#0ff'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(rick.x + 20, rick.y + 20, 100, 0, Math.PI*2); ctx.stroke();
+        }
+
+        if (combo > 1 && comboDisplayTimer > 0) {
+            ctx.fillStyle = 'yellow'; ctx.font = 'bold 20px Courier New';
+            ctx.fillText("COMBO X" + combo, rick.x - 10, rick.y - 20);
+        }
+
+        let bodyColor = '#ffcc99';
+        let hairColor = '#663300';
+        if(activeSkin === 'gold') { bodyColor = '#ffd700'; hairColor = '#b8860b'; }
+        else if(activeSkin === 'neon') { bodyColor = '#000'; hairColor = '#0ff'; ctx.shadowBlur = 10; ctx.shadowColor = '#0ff'; }
+        else if(activeSkin === 'hover') { bodyColor = '#aaffaa'; rick.y += Math.sin(Date.now()/150)*3; }
+
+        // Rick's hår
+        ctx.fillStyle = hairColor;
+        ctx.fillRect(rick.x - 4, rick.y - 8, rick.w + 8, 15);
+        ctx.beginPath();
+        ctx.moveTo(rick.x-4, rick.y-5); ctx.lineTo(rick.x+5, rick.y-15); ctx.lineTo(rick.x+15, rick.y-5);
+        ctx.lineTo(rick.x+25, rick.y-15); ctx.lineTo(rick.x+35, rick.y-5); ctx.lineTo(rick.x+44, rick.y-15);
+        ctx.lineTo(rick.x+44, rick.y+5); ctx.fill();
+
+        // Rick's ansikt & øyne
+        ctx.fillStyle = bodyColor;
+        ctx.fillRect(rick.x, rick.y + 5, rick.w, rick.h - 5);
+        ctx.fillStyle = 'white';
+        ctx.fillRect(rick.x + 7, rick.y + 14, 10, 10); ctx.fillRect(rick.x + 23, rick.y + 14, 10, 10);
+        ctx.fillStyle = 'black';
+        ctx.fillRect(rick.x + 11, rick.y + 18, 3, 3); ctx.fillRect(rick.x + 27, rick.y + 18, 3, 3);
+        ctx.shadowBlur = 0;
+
+        // Plattformer
+        platforms.forEach(p => {
+            if(p.type === 'break') ctx.fillStyle = p.hits >= 1 ? '#f00' : '#f60';
+            else if(p.type === 'moving') ctx.fillStyle = '#0cf';
+            else if(p.type === 'boost') ctx.fillStyle = '#ff0';
+            else ctx.fillStyle = '#4f4';
+            ctx.fillRect(p.x, p.y, 85, 15);
+        });
+
+        // FIENDER (HATERS) - Garantert lilla med øyne
+        enemies.forEach(en => {
+            ctx.fillStyle = '#a0f'; // TVUNGET LILLA
+            ctx.fillRect(en.x, en.y, en.w, en.h);
+            ctx.fillStyle = 'white'; // TVUNGET HVITE ØYNE
+            ctx.fillRect(en.x+4, en.y+5, 5, 5);
+            ctx.fillRect(en.x+16, en.y+5, 5, 5);
+        });
+    }
+
+    init(); update();
+</script>
 </body>
 </html>
