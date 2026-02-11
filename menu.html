@@ -8,11 +8,9 @@
         body { background: #000428; color: white; font-family: 'Courier New', sans-serif; text-align: center; margin: 0; padding: 20px; }
         h1 { color: gold; text-shadow: 0 0 10px gold; }
         .coin-display { font-size: 24px; margin-bottom: 30px; border-bottom: 2px solid #333; padding: 10px; }
-        .shop-item { background: rgba(255,255,255,0.1); border: 2px solid #444; border-radius: 15px; padding: 15px; margin: 15px auto; max-width: 300px; transition: 0.3s; }
-        .shop-item:hover { border-color: #0ff; }
+        .shop-item { background: rgba(255,255,255,0.1); border: 2px solid #444; border-radius: 15px; padding: 15px; margin: 15px auto; max-width: 300px; }
         .price { color: #0ff; font-weight: bold; display: block; margin: 5px 0; }
         .buy-btn { background: #4f4; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; border-radius: 5px; width: 100%; }
-        .buy-btn:disabled { background: #555; cursor: not-allowed; }
         .back-btn { position: absolute; top: 10px; left: 10px; background: none; border: 1px solid white; color: white; padding: 5px 15px; cursor: pointer; }
     </style>
 </head>
@@ -24,10 +22,10 @@
     <div class="coin-display">💰 RICK-COINS: <span id="balance">0</span></div>
 
     <div class="shop-item">
-        <h3>Sveve-Rick (Skin)</h3>
-        <p>En magisk hud som får deg til å svave svakt.</p>
-        <span class="price">99,000 COINS</span>
-        <button class="buy-btn" id="btn-hover" onclick="buy('hover', 99000)">KJØP</button>
+        <h3>Neon-Rick (Skin)</h3>
+        <p>Gjør Rick mørk med lysende blått hår!</p>
+        <span class="price">10,000 COINS</span>
+        <button class="buy-btn" id="btn-neon" onclick="buy('neon', 10000)">KJØP</button>
     </div>
 
     <div class="shop-item">
@@ -38,10 +36,10 @@
     </div>
 
     <div class="shop-item">
-        <h3>Uendelig Mikrofon</h3>
-        <p>Fjern cooldown på 🎤 angrepet helt!</p>
-        <span class="price">250,000 COINS</span>
-        <button class="buy-btn" id="btn-mic" onclick="buy('mic', 250000)">KJØP</button>
+        <h3>Sveve-Rick (Skin)</h3>
+        <p>Rick svaver litt over plattformene.</p>
+        <span class="price">99,000 COINS</span>
+        <button class="buy-btn" id="btn-hover" onclick="buy('hover', 99000)">KJØP</button>
     </div>
 
     <script>
@@ -50,9 +48,9 @@
 
         function updateUI() {
             document.getElementById('balance').innerText = balance.toLocaleString();
-            checkOwned('hover', 'btn-hover');
+            checkOwned('neon', 'btn-neon');
             checkOwned('gold', 'btn-gold');
-            checkOwned('mic', 'btn-mic');
+            checkOwned('hover', 'btn-hover');
         }
 
         function checkOwned(id, btnId) {
@@ -74,12 +72,11 @@
                 localStorage.setItem('rickCoins', balance);
                 localStorage.setItem('ownedItems', JSON.stringify(owned));
                 updateUI();
-                alert("Gratulerer! Du kjøpte " + id);
+                alert("Kjøpt!");
             } else {
-                alert("Du er for fattig! Spill mer og samle mynter.");
+                alert("Ikke nok coins!");
             }
         }
-
         updateUI();
     </script>
 </body>
