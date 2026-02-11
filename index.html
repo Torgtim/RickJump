@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rick Jump: Red Alert</title>
+    <title>Rick Jump: Combo Master</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', sans-serif; touch-action: none; }
         canvas { display: block; background: linear-gradient(#000428, #004e92); }
@@ -79,6 +79,11 @@
     let activeSkin = localStorage.getItem('activeSkin') || 'default';
     let hasInfiniteMic = (JSON.parse(localStorage.getItem('ownedItems')) || []).includes('mic');
     
+    // Combo variabler
+    let combo = 0;
+    let lastKillTime = 0;
+    let comboDisplayTimer = 0;
+
     let gameActive = true;
     let platformCount = 0;
     
@@ -133,11 +138,12 @@
             document.getElementById('cooldown-fill').style.width = (1 - rick.atkCooldown/240)*100 + "%";
         }
         if(rick.atkActive > 0) rick.atkActive--;
+        if(comboDisplayTimer > 0) comboDisplayTimer--;
 
         if(rick.x > canvas.width) rick.x = -rick.w;
         if(rick.x < -rick.w) rick.x = canvas.width;
 
-        // Plattformer logikk
+        // Plattformer
         for (let i = platforms.length - 1; i >= 0; i--) {
             let p = platforms[i];
             if(p.type === 'moving') {
@@ -145,12 +151,11 @@
                 if(p.x <= 0 || p.x >= canvas.width - 85) p.vx *= -1;
             }
 
-            // Kollisjon
             if(rick.vy > 0 && rick.x+rick.w > p.x && rick.x < p.x+85 && rick.y+rick.h > p.y && rick.y+rick.h < p.y+25) {
                 if(p.type === 'break') {
                     p.hits++;
                     if(p.hits > 1) {
-                        platforms.splice(i, 1); // Forsvinner etter det ene hoppet
+                        platforms.splice(i, 1);
                     } else {
                         rick.vy = -14;
                     }
@@ -160,7 +165,7 @@
             }
         }
 
-        // Fiender
+        // Fiender og Combo-logikk
         for (let i = enemies.length - 1; i >= 0; i--) {
             let en = enemies[i];
             en.x += en.vx;
@@ -177,7 +182,19 @@
                 let dist = Math.hypot((rick.x+20)-(en.x+12), (rick.y+20)-(en.y+12));
                 if(dist < 130) {
                     enemies.splice(i, 1);
-                    coins += 5;
+                    
+                    // COMBO LOGIKK
+                    let now = Date.now();
+                    if (now - lastKillTime < 1500) {
+                        combo++;
+                    } else {
+                        combo = 1;
+                    }
+                    lastKillTime = now;
+                    comboDisplayTimer = 40;
+
+                    let reward = 5 * combo;
+                    coins += reward;
                     document.getElementById('coinVal').innerText = coins;
                     localStorage.setItem('rickCoins', coins);
                 }
@@ -204,8 +221,7 @@
             let earned = Math.floor(score / 10);
             coins += earned;
             localStorage.setItem('rickCoins', coins);
-            
-            document.getElementById('finalScoreDisplay').innerText = "Score: " + score + " (+ " + earned + " coins)";
+            document.getElementById('finalScoreDisplay').innerText = "Score: " + score;
             document.getElementById('hiScoreDisplay').innerText = highScore;
             document.getElementById('rickRollOverlay').style.display = 'flex';
             document.getElementById('rickVideo').play();
@@ -223,21 +239,42 @@
             ctx.beginPath(); ctx.arc(rick.x + 20, rick.y + 20, 100, 0, Math.PI*2); ctx.stroke();
         }
 
+        // Combo-tekst
+        if (combo > 1 && comboDisplayTimer > 0) {
+            ctx.fillStyle = 'yellow';
+            ctx.font = 'bold 20px Courier New';
+            ctx.fillText("COMBO X" + combo, rick.x - 10, rick.y - 20);
+        }
+
         let bodyColor = '#ffcc99';
         let hairColor = '#663300';
         if(activeSkin === 'gold') { bodyColor = '#ffd700'; hairColor = '#b8860b'; }
         else if(activeSkin === 'neon') { bodyColor = '#000'; hairColor = '#0ff'; ctx.shadowBlur = 10; ctx.shadowColor = '#0ff'; }
         else if(activeSkin === 'hover') { bodyColor = '#aaffaa'; rick.y += Math.sin(Date.now()/150)*3; }
 
-        // Rick Design
+        // FIKSET HÅR-DESIGN (Mer stabilt og Rick-aktig)
         ctx.fillStyle = hairColor;
-        ctx.fillRect(rick.x - 2, rick.y - 6, rick.w + 4, 15);
+        // Bakre hår-lag
+        ctx.fillRect(rick.x - 4, rick.y - 8, rick.w + 8, 15);
+        // Tagger på toppen
+        ctx.beginPath();
+        ctx.moveTo(rick.x - 4, rick.y - 5);
+        ctx.lineTo(rick.x + 5, rick.y - 15);
+        ctx.lineTo(rick.x + 15, rick.y - 5);
+        ctx.lineTo(rick.x + 25, rick.y - 15);
+        ctx.lineTo(rick.x + 35, rick.y - 5);
+        ctx.lineTo(rick.x + 44, rick.y - 15);
+        ctx.lineTo(rick.x + 44, rick.y + 5);
+        ctx.fill();
+
+        // Ansikt
         ctx.fillStyle = bodyColor;
         ctx.fillRect(rick.x, rick.y + 5, rick.w, rick.h - 5);
         
+        // Øyne (Hvite firkanter med pupiller)
         ctx.fillStyle = 'white';
-        ctx.fillRect(rick.x + 8, rick.y + 15, 8, 8);
-        ctx.fillRect(rick.x + 24, rick.y + 15, 8, 8);
+        ctx.fillRect(rick.x + 7, rick.y + 14, 10, 10);
+        ctx.fillRect(rick.x + 23, rick.y + 14, 10, 10);
         ctx.fillStyle = 'black';
         ctx.fillRect(rick.x + 11, rick.y + 18, 3, 3);
         ctx.fillRect(rick.x + 27, rick.y + 18, 3, 3);
@@ -245,23 +282,11 @@
 
         // Plattformer
         platforms.forEach(p => {
-            if(p.type === 'break') {
-                ctx.fillStyle = p.hits >= 1 ? '#ff0000' : '#ff6600'; // BLIR RØD ETTER ETT HOPP
-            } else if(p.type === 'moving') {
-                ctx.fillStyle = '#0cf';
-            } else if(p.type === 'boost') {
-                ctx.fillStyle = '#ff0';
-            } else {
-                ctx.fillStyle = '#4f4';
-            }
+            if(p.type === 'break') ctx.fillStyle = p.hits >= 1 ? '#f00' : '#f60';
+            else if(p.type === 'moving') ctx.fillStyle = '#0cf';
+            else if(p.type === 'boost') ctx.fillStyle = '#ff0';
+            else ctx.fillStyle = '#4f4';
             ctx.fillRect(p.x, p.y, 85, 15);
-            
-            // Litt tekstur på breaking platforms
-            if(p.type === 'break' && p.hits >= 1) {
-                ctx.fillStyle = 'white';
-                ctx.fillRect(p.x + 20, p.y + 5, 2, 5);
-                ctx.fillRect(p.x + 60, p.y + 2, 2, 8);
-            }
         });
 
         // Fiender
