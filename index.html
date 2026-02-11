@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Rick Jump: High Score Edition</title>
+    <title>Rick Jump: Bounty Hunter</title>
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', sans-serif; touch-action: none; }
         canvas { display: block; background: linear-gradient(#000428, #004e92); }
@@ -27,9 +27,7 @@
             color: white; text-align: center;
         }
         #rickVideo { width: 100%; max-height: 50vh; }
-        
-        .score-box { margin-bottom: 10px; }
-        .hi-score { color: gold; font-weight: bold; font-size: 22px; }
+        .hi-score { color: gold; font-weight: bold; font-size: 22px; margin-top: 5px; }
 
         button { 
             margin-top: 20px; padding: 15px 40px; font-size: 20px; 
@@ -59,10 +57,8 @@
 
     <div id="rickRollOverlay">
         <h1 style="color: #ff0044;">GAME OVER</h1>
-        <div class="score-box">
-            <div id="finalScoreDisplay">Score: 0</div>
-            <div class="hi-score">BEST: <span id="hiScoreDisplay">0</span></div>
-        </div>
+        <div id="finalScoreDisplay">Score: 0</div>
+        <div class="hi-score">BEST: <span id="hiScoreDisplay">0</span></div>
         <video id="rickVideo" playsinline loop>
             <source src="https://dn721809.ca.archive.org/0/items/youtube-xvFZjo5PgG0/xvFZjo5PgG0.mp4" type="video/mp4">
         </video>
@@ -141,6 +137,7 @@
         if(rick.x > canvas.width) rick.x = -rick.w;
         if(rick.x < -rick.w) rick.x = canvas.width;
 
+        // Plattformer
         platforms.forEach((p, i) => {
             if(p.type === 'moving') {
                 p.x += p.vx;
@@ -152,16 +149,37 @@
             }
         });
 
-        enemies.forEach((en, i) => {
+        // Fiender - FIKSET BUG HER
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            let en = enemies[i];
             en.x += en.vx;
             if(en.x < en.parent.x || en.x > en.parent.x + 60) en.vx *= -1;
             en.y = en.parent.y - 30;
+
+            // Fjern fiender som faller ut av bunnen
+            if (en.y > canvas.height) {
+                enemies.splice(i, 1);
+                continue;
+            }
+
+            // Kollisjon med Rick
             if(rick.x < en.x+en.w && rick.x+rick.w > en.x && rick.y < en.y+en.h && rick.y+rick.h > en.y) {
                 if(rick.atkActive === 0) { rick.vx = (rick.x < en.x) ? -15 : 15; rick.vy = 5; }
             }
-            if(rick.atkActive > 0 && Math.hypot((rick.x+20)-(en.x+12), (rick.y+20)-(en.y+12)) < 130) enemies.splice(i, 1);
-        });
 
+            // Drep fiende med mikrofon (+5 COINS)
+            if(rick.atkActive > 0) {
+                let dist = Math.hypot((rick.x+20)-(en.x+12), (rick.y+20)-(en.y+12));
+                if(dist < 130) {
+                    enemies.splice(i, 1);
+                    coins += 5;
+                    document.getElementById('coinVal').innerText = coins;
+                    localStorage.setItem('rickCoins', coins);
+                }
+            }
+        }
+
+        // Scrolling
         if(rick.y < canvas.height/2) {
             let d = canvas.height/2 - rick.y;
             rick.y = canvas.height/2;
@@ -171,21 +189,21 @@
                 p.y += d;
                 if(p.y > canvas.height) { platforms.splice(i, 1); spawnPlatform(0); }
             });
-            enemies.forEach(en => { if(en.y > canvas.height) enemies.splice(enemies.indexOf(en), 1); });
         }
 
         if(rick.y > canvas.height) {
             gameActive = false;
-            // HI-SCORE LOGIKK
             if(score > highScore) {
                 highScore = score;
                 localStorage.setItem('rickJumpHighScore', highScore);
             }
             let earned = Math.floor(score / 10);
-            localStorage.setItem('rickCoins', coins + earned);
+            coins += earned;
+            localStorage.setItem('rickCoins', coins);
             
-            document.getElementById('finalScoreDisplay').innerText = "Score: " + score + " (+ " + earned + " coins)";
+            document.getElementById('finalScoreDisplay').innerText = "Score: " + score + " (+ " + earned + " fra score)";
             document.getElementById('hiScoreDisplay').innerText = highScore;
+            document.getElementById('coinVal').innerText = coins;
             document.getElementById('rickRollOverlay').style.display = 'flex';
             document.getElementById('rickVideo').play();
         }
@@ -197,7 +215,6 @@
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Angreps-effekt
         if(rick.atkActive > 0) {
             ctx.strokeStyle = '#0ff'; ctx.lineWidth = 4;
             ctx.beginPath(); ctx.arc(rick.x + 20, rick.y + 20, 100, 0, Math.PI*2); ctx.stroke();
@@ -205,31 +222,40 @@
 
         let bodyColor = '#ffcc99';
         let hairColor = '#663300';
-        
         if(activeSkin === 'gold') { bodyColor = '#ffd700'; hairColor = '#b8860b'; }
         else if(activeSkin === 'neon') { bodyColor = '#000'; hairColor = '#0ff'; ctx.shadowBlur = 10; ctx.shadowColor = '#0ff'; }
         else if(activeSkin === 'hover') { bodyColor = '#aaffaa'; rick.y += Math.sin(Date.now()/150)*3; }
 
-        // Hår
+        // 1. Hår
         ctx.fillStyle = hairColor;
         ctx.fillRect(rick.x - 2, rick.y - 6, rick.w + 4, 15);
-        // Ansikt
+        // 2. Ansikt
         ctx.fillStyle = bodyColor;
         ctx.fillRect(rick.x, rick.y + 5, rick.w, rick.h - 5);
-        
-        // Øyne
+        // 3. Øyne (De riktige øynene!)
         ctx.fillStyle = 'white';
-        ctx.fillRect(rick.x + 8, rick.y + 15, 6, 6);
-        ctx.fillRect(rick.x + 26, rick.y + 15, 6, 6);
-        ctx.shadowBlur = 0; // Reset shadow for resten
+        ctx.fillRect(rick.x + 8, rick.y + 15, 8, 8);
+        ctx.fillRect(rick.x + 24, rick.y + 15, 8, 8);
+        ctx.fillStyle = 'black';
+        ctx.fillRect(rick.x + 11, rick.y + 18, 3, 3);
+        ctx.fillRect(rick.x + 27, rick.y + 18, 3, 3);
+        ctx.shadowBlur = 0;
 
+        // Plattformer
         platforms.forEach(p => {
             ctx.fillStyle = p.type === 'moving' ? '#0cf' : p.type === 'boost' ? '#ff0' : p.type === 'break' ? '#f60' : '#4f4';
             ctx.fillRect(p.x, p.y, 85, 15);
         });
 
+        // Fiender
         ctx.fillStyle = '#a0f';
-        enemies.forEach(en => ctx.fillRect(en.x, en.y, en.w, en.h));
+        enemies.forEach(en => {
+            ctx.fillRect(en.x, en.y, en.w, en.h);
+            ctx.fillStyle = 'white';
+            ctx.fillRect(en.x+4, en.y+5, 5, 5);
+            ctx.fillRect(en.x+16, en.y+5, 5, 5);
+            ctx.fillStyle = '#a0f';
+        });
     }
 
     init(); update();
