@@ -16,30 +16,37 @@
 </head>
 <body>
 
-    <button class="back-btn" onclick="location.href='index.html'"><- TILBAKE</button>
+    <button class="back-btn" onclick="location.href='index.html'"><- SPILL</button>
 
     <h1>RICK SHOP</h1>
     <div class="coin-display">💰 RICK-COINS: <span id="balance">0</span></div>
 
     <div class="shop-item">
         <h3>Neon-Rick (Skin)</h3>
-        <p>Gjør Rick mørk med lysende blått hår!</p>
+        <p>Mørk stil med lysende hår!</p>
         <span class="price">10,000 COINS</span>
         <button class="buy-btn" id="btn-neon" onclick="buy('neon', 10000)">KJØP</button>
     </div>
 
     <div class="shop-item">
         <h3>Gull-Rick (Skin)</h3>
-        <p>Vis alle at du er steinrik.</p>
+        <p>Ren luksus.</p>
         <span class="price">50,000 COINS</span>
         <button class="buy-btn" id="btn-gold" onclick="buy('gold', 50000)">KJØP</button>
     </div>
 
     <div class="shop-item">
         <h3>Sveve-Rick (Skin)</h3>
-        <p>Rick svaver litt over plattformene.</p>
+        <p>Rick svaver over plattformene.</p>
         <span class="price">99,000 COINS</span>
         <button class="buy-btn" id="btn-hover" onclick="buy('hover', 99000)">KJØP</button>
+    </div>
+
+    <div class="shop-item">
+        <h3>Uendelig Mikrofon</h3>
+        <p>Ingen ventetid på angrep!</p>
+        <span class="price">250,000 COINS</span>
+        <button class="buy-btn" id="btn-mic" onclick="buy('mic', 250000)">KJØP</button>
     </div>
 
     <script>
@@ -51,6 +58,7 @@
             checkOwned('neon', 'btn-neon');
             checkOwned('gold', 'btn-gold');
             checkOwned('hover', 'btn-hover');
+            checkOwned('mic', 'btn-mic');
         }
 
         function checkOwned(id, btnId) {
